@@ -30,25 +30,43 @@ namespace CurrencyService
             if (from.AlphabeticCode == to.AlphabeticCode)
                 return new CurrencyConverter(from, to, value => 1.0m);
 
-            var invertRate = false;
-            CurrencyRate rate;
+            var rate = _CurrencyRates.FirstOrDefault(r =>
+                    r.From.AlphabeticCode == from.AlphabeticCode && r.To.AlphabeticCode == to.AlphabeticCode);
 
-            try
+            if(rate == null)
             {
-                rate = _CurrencyRates.FirstOrDefault(r =>
-                    r.From.AlphabeticCode == from.AlphabeticCode && r.To.AlphabeticCode == to.AlphabeticCode)
-                    ?? throw new ArgumentNullException("Rate not found;");
-            }
-            catch (ArgumentNullException)
-            {
-                rate = _CurrencyRates.FirstOrDefault(r =>
-                    r.To.AlphabeticCode == from.AlphabeticCode && r.From.AlphabeticCode == to.AlphabeticCode)
-                    ?? throw new ArgumentNullException("Inverted rate not found;");
+                var currRates = new List<CurrencyRate>(_CurrencyRates);
 
-                invertRate = true;
+                foreach(var r in _CurrencyRates)
+                {
+                    var newRate = new CurrencyRate()
+                    {
+                        Ticker = r.Ticker + "_INV",
+                        Rate = 1 / r.Rate,
+                        From = r.To,
+                        To = r.From,
+                        FromAlfa3 = r.ToAlfa3,
+                        ToAlfa3 = r.FromAlfa3
+                    };
+
+                    currRates.Add(newRate);
+                }
+
+                CurrencyRate temp;
+                decimal tempRate;
+
+                while(rate == null)
+                {
+                    temp = currRates.FirstOrDefault(r => r.From.AlphabeticCode == from.AlphabeticCode);
+
+                    if(temp == null)
+                    {
+
+                    }
+                }
             }
 
-            return new CurrencyConverter(from, to, value => invertRate ? value / rate.Rate : value * rate.Rate);
+            return new CurrencyConverter(from, to, value => value * rate.Rate);
         }
     }
 }
