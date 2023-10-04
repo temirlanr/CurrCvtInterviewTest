@@ -27,6 +27,7 @@ namespace CurrencyService
 
         public CurrencyConverter GetConverter(Currency from, Currency to)
         {
+
             if (from.AlphabeticCode == to.AlphabeticCode)
                 return new CurrencyConverter(from, to, value => 1.0m);
 
@@ -35,7 +36,15 @@ namespace CurrencyService
 
             if(rate == null)
             {
-                var currRates = new List<CurrencyRate>(_CurrencyRates);
+                rate = _CurrencyRates.FirstOrDefault(r =>
+                    r.To.AlphabeticCode == from.AlphabeticCode && r.From.AlphabeticCode == to.AlphabeticCode);
+
+                if(rate != null)
+                {
+                    return new CurrencyConverter(from, to, value => value / rate.Rate);
+                }
+
+                var currencyRates = new List<CurrencyRate>(_CurrencyRates);
 
                 foreach(var r in _CurrencyRates)
                 {
@@ -49,21 +58,41 @@ namespace CurrencyService
                         ToAlfa3 = r.FromAlfa3
                     };
 
-                    currRates.Add(newRate);
+                    currencyRates.Add(newRate);
                 }
 
-                CurrencyRate temp;
-                decimal tempRate;
+                decimal resRate = 1.0m;
+                var visited = new HashSet<string>();
+                var stack = new Stack<string>();
+                stack.Push(from.AlphabeticCode);
 
-                while(rate == null)
+                while(stack.Count > 0)
                 {
-                    temp = currRates.FirstOrDefault(r => r.From.AlphabeticCode == from.AlphabeticCode);
+                    var curr = stack.Pop();
 
-                    if(temp == null)
+                    if (visited.Contains(curr)) 
+                        continue;
+
+                    visited.Add(curr);
+
+                    // TODO: FIND A WAY TO UPDATE THE RATE USING CURRENT CURRENCY RATE
+                    //var rate = currencyRates.First
+                    //resRate += 
+
+                    var neighborRates = currencyRates.Where(r => r.From.AlphabeticCode == curr).ToList();
+
+                    if (neighborRates.Count == 0)
+                        throw new ArgumentException("Couldn't convert.");
+
+                    var neightborCurrs = neighborRates.Select(r => r.To.AlphabeticCode).Where(s => !visited.Contains(s)).ToList();
+
+                    foreach (var item in neightborCurrs)
                     {
-
+                        stack.Push(item);
                     }
                 }
+
+                return new CurrencyConverter(from, to, value => value * resRate);
             }
 
             return new CurrencyConverter(from, to, value => value * rate.Rate);
